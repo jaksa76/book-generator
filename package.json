@@ -1,0 +1,18 @@
+{
+  "name": "book-generator",
+  "version": "1.0.0",
+  "description": "AI-powered book generator using OpenAI",
+  "main": "src/book-generator.js",
+  "scripts": {
+    "start": "node src/book-generator.js",
+    "dev": "node src/book-generator.js"
+  },
+  "bin": {
+    "book-generator": "./src/book-generator.js"
+  },
+  "dependencies": {
+    "openai": "^4.20.0"
+  },
+  "author": "",
+  "license": "MIT"
+}
