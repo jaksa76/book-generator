@@ -5,6 +5,17 @@ const fs = require('fs/promises');
 const path = require('path');
 const OpenAI = require('openai');
 
+// Command line arguments parsing
+const args = process.argv.slice(2);
+const generateItemsOnly = args.includes('--items-only');
+const inputFile = args.find((arg, index) => arg === '--input-file' && args[index + 1])
+  ? args[args.findIndex((arg) => arg === '--input-file') + 1]
+  : null;
+
+// OpenAI model constants
+const STRUCTURE_MODEL = "gpt-3.5-turbo-0125";
+const CHAPTER_MODEL = "gpt-3.5-turbo-0125";
+
 // Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -50,7 +61,7 @@ async function generateBookStructure(theme, count, language, itemType) {
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo-0125",
+      model: STRUCTURE_MODEL,
       response_format: { type: "json_object" },
       messages: [
         { role: "system", content: "You are a helpful assistant that generates book outlines in JSON format." },
@@ -84,7 +95,7 @@ async function generateChapter(tip, language, chapterLength, itemType) {
 
   try {
     const response = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo-0125",
+      model: CHAPTER_MODEL,
       messages: [
         { role: "system", content: "You are a helpful assistant that writes detailed book chapters." },
         { role: "user", content: prompt }
@@ -96,6 +107,16 @@ async function generateChapter(tip, language, chapterLength, itemType) {
     console.error(`Error generating chapter for ${tip.title}:`, error);
     throw error;
   }
+}
+
+// Save items to a JSON file
+async function saveItemsToFile(bookData) {
+  const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+  const itemsFilePath = path.join(process.cwd(), `book-items-${timestamp}.json`);
+  
+  await fs.writeFile(itemsFilePath, JSON.stringify(bookData, null, 2));
+  
+  return itemsFilePath;
 }
 
 // Save book to files
@@ -119,6 +140,12 @@ async function saveBook(bookData, chapters) {
   // Save table of contents
   await fs.writeFile(path.join(bookDir, 'README.md'), toc);
   
+  // Save book structure as JSON
+  await fs.writeFile(
+    path.join(bookDir, 'book-structure.json'),
+    JSON.stringify(bookData, null, 2)
+  );
+  
   // Save each chapter
   for (let i = 0; i < chapters.length; i++) {
     const tipNumber = i + 1;
@@ -131,29 +158,22 @@ async function saveBook(bookData, chapters) {
   return bookDir;
 }
 
+// Load book structure from JSON file
+async function loadBookStructure(filePath) {
+  try {
+    const data = await fs.readFile(filePath, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.error(`Error loading book structure from ${filePath}:`, error);
+    throw error;
+  }
+}
+
 // Main function
 async function main() {
   try {
     console.log("Welcome to the Book Generator!");
     console.log("This program will help you create a book using OpenAI's GPT model.\n");
-    
-    const language = await ask("What language should the book be written in? (e.g., English, Spanish): ");
-    const theme = await ask("What theme or topic should the book cover?: ");
-    const itemType = await ask("What type of items should the book contain? (tips/advice/patterns/recipes/strategies/...): ");
-    const count = parseInt(await ask(`How many ${itemType} should the book contain? (10-100): `), 10);
-    const chapterLength = await ask("How long should each chapter be? (short/medium/long): ");
-    
-    if (isNaN(count) || count < 1 || count > 100) {
-      console.error("Invalid count. Please enter a number between 1 and 100.");
-      rl.close();
-      return;
-    }
-    
-    if (!['short', 'medium', 'long'].includes(chapterLength.toLowerCase())) {
-      console.error("Invalid chapter length. Please enter 'short', 'medium', or 'long'.");
-      rl.close();
-      return;
-    }
     
     // Check if OpenAI API key is set
     if (!process.env.OPENAI_API_KEY) {
@@ -164,8 +184,59 @@ async function main() {
       return;
     }
     
-    // Generate book structure
-    const bookData = await generateBookStructure(theme, count, language, itemType);
+    let bookData;
+    let language;
+    let itemType;
+    let chapterLength;
+    
+    // If input file is provided, load book structure from it
+    if (inputFile) {
+      console.log(`Loading book structure from ${inputFile}...`);
+      bookData = await loadBookStructure(inputFile);
+      language = await ask("What language should the chapters be written in? (e.g., English, Spanish): ");
+      itemType = await ask("What type of items does the book contain? (tips/advice/patterns/recipes/strategies/...): ");
+      chapterLength = await ask("How long should each chapter be? (short/medium/long): ");
+      
+      if (!['short', 'medium', 'long'].includes(chapterLength.toLowerCase())) {
+        console.error("Invalid chapter length. Please enter 'short', 'medium', or 'long'.");
+        rl.close();
+        return;
+      }
+    } else {
+      // Generate new book structure
+      language = await ask("What language should the book be written in? (e.g., English, Spanish): ");
+      const theme = await ask("What theme or topic should the book cover?: ");
+      itemType = await ask("What type of items should the book contain? (tips/advice/patterns/recipes/strategies/...): ");
+      const count = parseInt(await ask(`How many ${itemType} should the book contain? (10-100): `), 10);
+      
+      if (isNaN(count) || count < 1 || count > 100) {
+        console.error("Invalid count. Please enter a number between 1 and 100.");
+        rl.close();
+        return;
+      }
+      
+      // Generate book structure
+      bookData = await generateBookStructure(theme, count, language, itemType);
+      
+      // If --items-only flag is used, save only the items list and exit
+      if (generateItemsOnly) {
+        const itemsFilePath = await saveItemsToFile(bookData);
+        console.log(`\nItems list generated successfully! Saved to: ${itemsFilePath}`);
+        console.log("You can now review and modify this JSON file.");
+        console.log("To generate the book content based on this file, run:");
+        console.log(`book-generator --input-file ${itemsFilePath}`);
+        rl.close();
+        return;
+      }
+      
+      chapterLength = await ask("How long should each chapter be? (short/medium/long): ");
+      
+      if (!['short', 'medium', 'long'].includes(chapterLength.toLowerCase())) {
+        console.error("Invalid chapter length. Please enter 'short', 'medium', or 'long'.");
+        rl.close();
+        return;
+      }
+    }
     
     // Flatten all tips into a single array
     const allTips = bookData.categories.flatMap(category => category.items);

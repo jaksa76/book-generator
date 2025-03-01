@@ -5,13 +5,14 @@
   "main": "src/book-generator.js",
   "scripts": {
     "start": "node src/book-generator.js",
-    "dev": "node src/book-generator.js"
+    "dev": "node src/book-generator.js",
+    "items-only": "node src/book-generator.js --items-only"
   },
   "bin": {
     "book-generator": "./src/book-generator.js"
   },
   "dependencies": {
-    "openai": "^4.20.0"
+    "openai": "^4.86.1"
   },
   "author": "",
   "license": "MIT"
