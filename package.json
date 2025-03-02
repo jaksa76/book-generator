@@ -5,13 +5,17 @@
   "main": "src/cli.js",
   "scripts": {
     "start": "bun src/cli.js",
-    "items-only": "bun run src/cli.js --items-only"
+    "items-only": "bun run src/cli.js --items-only",
+    "test": "jest"
   },
   "bin": {
     "book-generator": "./src/cli.js"
   },
   "dependencies": {
     "openai": "^4.86.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
   },
   "author": "",
   "license": "MIT"

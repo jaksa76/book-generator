@@ -5,7 +5,7 @@ const path = require('path');
 const OpenAI = require('openai');
 
 // OpenAI model constants
-const STRUCTURE_MODEL = "gpt-3.5-turbo-0125";
+const STRUCTURE_MODEL = "gpt-4o-mini-2024-07-18";
 const CHAPTER_MODEL = "gpt-3.5-turbo-0125";
 
 // Initialize OpenAI client
