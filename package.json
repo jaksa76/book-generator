@@ -2,14 +2,13 @@
   "name": "book-generator",
   "version": "1.0.0",
   "description": "AI-powered book generator using OpenAI",
-  "main": "src/book-generator.js",
+  "main": "src/cli.js",
   "scripts": {
-    "start": "node src/book-generator.js",
-    "dev": "node src/book-generator.js",
-    "items-only": "node src/book-generator.js --items-only"
+    "start": "bun src/cli.js",
+    "items-only": "bun run src/cli.js --items-only"
   },
   "bin": {
-    "book-generator": "./src/book-generator.js"
+    "book-generator": "./src/cli.js"
   },
   "dependencies": {
     "openai": "^4.86.1"
